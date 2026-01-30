@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Schedule Pro | Notification Fix</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+
+    <style>
+        :root {
+            --bg-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+            --card-bg: rgba(30, 41, 59, 0.5);
+            --accent: #38bdf8;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --text: #f8fafc;
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg-image);
+            background-attachment: fixed;
+            background-size: cover;
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 140px;
+            min-height: 100vh;
+            line-height: 1.5;
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        .glass {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 10px;
+        }
+
+        @media(min-width: 768px) {
+            header { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 1.8rem;
+            letter-spacing: -1px;
+            margin: 0;
+            background: linear-gradient(to right, #fff, var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        
+        .week-switcher {
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            border-radius: 14px;
+            padding: 4px;
+            border: 1px solid var(--glass-border);
+        }
+        
+        .week-btn {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 1.2rem;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 0.2s;
+        }
+        .week-btn:hover { background: rgba(255,255,255,0.1); }
+        
+        .week-label {
+            font-weight: 800;
+            padding: 0 15px;
+            min-width: 120px;
+            text-align: center;
+            color: var(--accent);
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 14px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        .btn:hover { 
+            background: rgba(255,255,255,0.1); 
+            transform: translateY(-2px);
+        }
+        .btn-primary { background: var(--accent); color: #000; border: none; }
+        .btn-outline.active { background: var(--accent); color: #000; }
+        
+        /* Стиль кнопки сповіщень */
+        .btn-notify { border-color: rgba(255,255,255,0.2); }
+        .btn-notify.active { 
+            background: rgba(46, 213, 115, 0.2); 
+            color: #2ed573; 
+            border-color: #2ed573; 
+            box-shadow: 0 0 15px rgba(46, 213, 115, 0.2);
+        }
+        .btn-notify.denied {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            border-color: #ff4757;
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 25px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .day-column { padding: 10px; border-radius: 24px; transition: background 0.3s; }
+        .day-column.is-today { background: rgba(56, 189, 248, 0.05); outline: 1px solid rgba(56, 189, 248, 0.2); }
+
+        .day-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-left: 10px;
+        }
+        .day-title::before { content: ''; width: 4px; height: 20px; background: var(--accent); border-radius: 4px; }
+
+        .lesson-card {
+            margin-bottom: 16px;
+            padding: 20px;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--glass-border);
+            border-left: 4px solid var(--glass-border);
+            animation: fadeIn 0.5s ease backwards; 
+        }
+
+        .lesson-card.has-data {
+            border-left-color: var(--accent);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .lesson-card:hover {
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(255,255,255,0.08);
+            transform: scale(1.02);
+        }
+
+        .lesson-card.active {
+            border-color: var(--success);
+            border-left-color: var(--success);
+            background: linear-gradient(135deg, rgba(46, 213, 115, 0.15) 0%, rgba(30, 41, 59, 0.9) 100%);
+            box-shadow: 0 10px 40px -10px rgba(46, 213, 115, 0.3);
+        }
+
+        .time-badge {
+            font-size: 0.75rem;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 10px;
+            border-radius: 8px;
+            color: var(--accent);
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .card-timer-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(46, 213, 115, 0.25);
+            color: #2ed573;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            margin-left: 8px;
+            border: 1px solid rgba(46, 213, 115, 0.4);
+            animation: pulse-green 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(46, 213, 115, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(46, 213, 115, 0); }
+        }
+
+        .lesson-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; display: block; }
+
+        .lesson-link {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: color 0.2s;
+        }
+        .lesson-link:hover { color: var(--accent); }
+
+        .progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: rgba(255,255,255,0.05); overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--success); transition: width 1s linear; }
+
+        .edit-btn {
+            position: absolute; top: 10px; right: 10px; opacity: 0;
+            background: var(--accent); border: none; padding: 8px;
+            border-radius: 10px; cursor: pointer; transition: 0.3s;
+            z-index: 5;
+        }
+        [data-edit-mode="true"] .edit-btn { opacity: 1; }
+
+        /* ВІДЖЕТ ПОТОЧНОГО УРОКУ (Зліва внизу) */
+        .current-widget {
+            position: fixed; bottom: 30px; left: 30px; width: 340px; z-index: 100;
+            padding: 20px; transform: translateX(-150%); transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1.2);
+        }
+        .current-widget.visible { transform: translateX(0); }
+
+        /* РЕКЛАМНИЙ БАНЕР (Справа внизу) */
+        .ad-corner {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 200px;
+            z-index: 90;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+            color: #fff;
+            transition: transform 0.3s ease, background 0.3s;
+            cursor: pointer;
+        }
+        .ad-corner:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .modal-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px); display: none; justify-content: center;
+            align-items: center; z-index: 200; opacity: 0; transition: 0.3s;
+        }
+        .modal { width: 90%; max-width: 480px; padding: 30px; transform: scale(0.9); transition: 0.3s; }
+        .modal-backdrop.open { opacity: 1; }
+        .modal-backdrop.open .modal { transform: scale(1); }
+
+        input, select { width: 100%; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); color: #fff; padding: 14px; border-radius: 12px; margin-top: 5px; outline: none; }
+        #fileInput { display: none; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body data-edit-mode="false">
+
+<header>
+    <h1>📅 SchedulePro</h1>
+    
+    <div class="week-switcher">
+        <button class="week-btn" onclick="changeWeek(-1)">◀</button>
+        <div class="week-label" id="currentWeekLabel">Тиждень А</div>
+        <button class="week-btn" onclick="changeWeek(1)">▶</button>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-notify" id="notifyBtn" onclick="toggleNotifications()">🔕 Сповіщення</button>
+        
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📤 Відкрити</button>
+        <button class="btn" onclick="exportToFile()">📥 Зберегти</button>
+        <button class="btn" onclick="openSettings()">🎨 Вигляд</button>
+        <button class="btn btn-outline" id="toggleEdit" onclick="toggleEditMode()">✏️ Ред.</button>
+    </div>
+    <input type="file" id="fileInput" accept=".json" onchange="importFromFile(this)">
+</header>
+
+<div class="schedule-grid" id="grid"></div>
+
+<div class="current-widget glass" id="activeWidget">
+    <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--accent); font-weight: 800; margin-bottom: 10px;">Зараз триває</div>
+    <div id="widgetName" style="font-size: 1.2rem; font-weight: 800; margin-bottom: 10px;">Назва</div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="widgetTimes" style="font-family: monospace; opacity: 0.7;">08:30 - 09:15</span>
+        <span id="widgetCountdown" style="color: var(--success); font-weight: 800; font-size: 1.1rem;">00 хв</span>
+    </div>
+    <a id="widgetLink" href="#" target="_blank" class="btn-primary btn" style="margin-top: 15px; justify-content: center; padding: 8px;">🎥 Приєднатися</a>
+</div>
+
+<a href="https://sites.google.com/view/grivnacoin/%D0%B3%D0%BB%D0%B0%D0%B2%D0%BD%D0%B0%D1%8F-%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0" target="_blank" class="ad-corner glass">
+    <div style="font-size: 2rem;">🪙</div>
+    <div style="display:flex; flex-direction: column;">
+        <span style="font-size: 0.7rem; opacity: 0.6; text-transform: uppercase; font-weight: 700;">Partner</span>
+        <span style="font-size: 1.1rem; font-weight: 800; color: #fbbf24;">GrivnaCoin</span>
+    </div>
+</a>
+
+<div class="modal-backdrop" id="modal">
+    <div class="modal glass">
+        <h2 style="margin-top:0">Налаштування уроку</h2>
+        <div style="display:grid; gap:15px;">
+            <div>
+                <label style="font-size:0.8rem; opacity:0.6">Предмет</label>
+                <input type="text" id="nameInp" list="subjectsList" oninput="autoFillLink()" placeholder="Наприклад: Математика">
+                <datalist id="subjectsList"></datalist>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div><label style="font-size:0.8rem; opacity:0.6">Початок</label><input type="time" id="startInp"></div>
+                <div><label style="font-size:0.8rem; opacity:0.6">Кінець</label><input type="time" id="endInp"></div>
+            </div>
+            <div><label style="font-size:0.8rem; opacity:0.6">Посилання</label><input type="text" id="linkInp" placeholder="Zoom/Meet link"></div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:25px;">
+            <button class="btn btn-primary" style="flex:2" onclick="saveLesson()">Зберегти</button>
+            <button class="btn" style="flex:1; background:var(--danger)" onclick="deleteLesson()">🗑️</button>
+            <button class="btn" style="flex:1" onclick="closeModal('modal')">Скасувати</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop" id="settingsModal">
+    <div class="modal glass">
+        <h2>Стилізація</h2>
+        <div style="display:grid; gap:20px;">
+            <div>
+                <label>Колір теми</label>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <div style="width:35px; height:35px; border-radius:10px; background:#38bdf8; cursor:pointer;" onclick="setAccent('#38bdf8')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#2ed573; cursor:pointer;" onclick="setAccent('#2ed573')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#ffa502; cursor:pointer;" onclick="setAccent('#ffa502')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#ff4757; cursor:pointer;" onclick="setAccent('#ff4757')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#a29bfe; cursor:pointer;" onclick="setAccent('#a29bfe')"></div>
+                </div>
+            </div>
+            <div>
+                <label>Шпалери</label>
+                <select id="bgSelect" onchange="changeBackground(this.value)">
+                    <option value="default">🌌 Нічне небо</option>
+                    <option value="sunset">🌇 Захід сонця</option>
+                    <option value="forest">🌲 Глибокий ліс</option>
+                    <option value="black">🌑 Pure Black (OLED)</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:30px;" onclick="closeModal('settingsModal')">Готово</button>
+    </div>
+</div>
+
+<script>
+    const days = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"];
+    const icons = ["⚡", "🔥", "💎", "🌟", "🍀", "🎉", "🎐"];
+    
+    // Дані
+    let schedule = JSON.parse(localStorage.getItem('gh-schedule')) || {};
+    let userSettings = JSON.parse(localStorage.getItem('gh-settings')) || { accent: '#38bdf8', bg: 'default' };
+    
+    // Стан сповіщень
+    let notificationsEnabled = JSON.parse(localStorage.getItem('gh-notifications')) || false;
+
+    // Стан
+    let currentEditKey = null;
+    let activeLessonGlobal = null;
+    let currentWeekIndex = 0; 
+    let lastNotifiedLessonId = null;
+
+    function init() { 
+        migrateDataIfNeeded();
+        applySettings(); 
+        if(document.getElementById('bgSelect')) {
+            document.getElementById('bgSelect').value = userSettings.bg || 'default';
+        }
+        
+        checkPermissionStatus(); // Перевірка при старті
+        render(); 
+        
+        setInterval(updateWidgetTimerOnly, 1000); 
+    }
+
+    // --- ЛОГІКА СПОВІЩЕНЬ (ВИПРАВЛЕНО) ---
+    
+    function checkPermissionStatus() {
+        if (!("Notification" in window)) {
+            const btn = document.getElementById('notifyBtn');
+            btn.innerHTML = "❌ Не підтримується";
+            return;
+        }
+
+        if (Notification.permission === "granted" && notificationsEnabled) {
+            setBtnState(true);
+        } else if (Notification.permission === "denied") {
+            setBtnState(false, true);
+        } else {
+            setBtnState(false);
+        }
+    }
+
+    function toggleNotifications() {
+        if (!("Notification" in window)) {
+            alert("Ваш браузер не підтримує сповіщення.");
+            return;
+        }
+
+        if (Notification.permission === "denied") {
+            alert("⚠️ Сповіщення заблоковані у налаштуваннях браузера.\n\nНатисніть на значок 🔒 або ⓘ біля адресного рядка сайту і виберіть 'Дозволити' для сповіщень.");
+            return;
+        }
+
+        if (notificationsEnabled) {
+            // Вимкнути
+            notificationsEnabled = false;
+            localStorage.setItem('gh-notifications', 'false');
+            setBtnState(false);
+        } else {
+            // Увімкнути
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    notificationsEnabled = true;
+                    localStorage.setItem('gh-notifications', 'true');
+                    setBtnState(true);
+                    
+                    // МИТТЄВИЙ ТЕСТ
+                    try {
+                        new Notification("✅ Тестове сповіщення", { 
+                            body: "Якщо ви це бачите — все працює чудово!",
+                            icon: "https://cdn-icons-png.flaticon.com/512/2693/2693507.png"
+                        });
+                    } catch (e) {
+                        alert("Сповіщення дозволено, але тест не пройшов. Перевірте режим 'Не турбувати' в системі.");
+                    }
+                    
+                } else {
+                    alert("На жаль, ви не дали дозвіл. Сповіщення не працюватимуть.");
+                    setBtnState(false);
+                }
+            });
+        }
+    }
+
+    function setBtnState(isOn, isDenied = false) {
+        const btn = document.getElementById('notifyBtn');
+        if (isDenied) {
+            btn.innerHTML = "🚫 Заблоковано";
+            btn.classList.remove('active');
+            btn.classList.add('denied');
+        } else if (isOn) {
+            btn.innerHTML = "🔔 Увімкнено";
+            btn.classList.add('active');
+            btn.classList.remove('denied');
+        } else {
+            btn.innerHTML = "🔕 Вимкнено";
+            btn.classList.remove('active');
+            btn.classList.remove('denied');
+        }
+    }
+    // -------------------------------------
+
+    function changeWeek(direction) {
+        currentWeekIndex = (currentWeekIndex + direction + 2) % 2;
+        updateWeekLabel();
+        render();
+    }
+
+    function updateWeekLabel() {
+        const labels = ["Тиждень А (Перший)", "Тиждень Б (Другий)"];
+        document.getElementById('currentWeekLabel').textContent = labels[currentWeekIndex];
+    }
+
+    function migrateDataIfNeeded() {
+        let changed = false;
+        Object.keys(schedule).forEach(key => {
+            if (/^\d+-\d+$/.test(key)) {
+                const newKey = `0-${key}`;
+                schedule[newKey] = schedule[key];
+                delete schedule[key];
+                changed = true;
+            }
+        });
+        if (changed) {
+            localStorage.setItem('gh-schedule', JSON.stringify(schedule));
+        }
+    }
+
+    function exportToFile() {
+        const data = JSON.stringify(schedule, null, 2);
+        const blob = new Blob([data], {type: "application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "schedule_pro.json";
+        a.click();
+    }
+
+    function importFromFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                schedule = JSON.parse(e.target.result);
+                migrateDataIfNeeded();
+                localStorage.setItem('gh-schedule', JSON.stringify(schedule));
+                render();
+            } catch(err) { alert("Помилка файлу"); }
+        };
+        reader.readAsText(file);
+    }
+
+    function render() {
+        updateWeekLabel();
+        const grid = document.getElementById('grid');
+        grid.innerHTML = ''; 
+        activeLessonGlobal = null;
+        
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const currentDay = (now.getDay() + 6) % 7; 
+
+        days.forEach((day, dIdx) => {
+            const isToday = dIdx === currentDay;
+            const dayCol = document.createElement('div');
+            dayCol.className = `day-column ${isToday ? 'is-today' : ''}`;
+            dayCol.innerHTML = `<div class="day-title"><span>${icons[dIdx]}</span> ${day}</div>`;
+            
+            for(let sIdx = 0; sIdx < 8; sIdx++) {
+                const key = `${currentWeekIndex}-${dIdx}-${sIdx}`;
+                dayCol.appendChild(createLessonCard(schedule[key], key, isToday, currentTime, sIdx));
+            }
+            grid.appendChild(dayCol);
+        });
+        
+        updateWidgetTimerOnly();
+    }
+
+    function createLessonCard(data, key, isToday, currentTime, index) {
+        const card = document.createElement('div');
+        card.className = 'lesson-card glass';
+        if(data) card.classList.add('has-data');
+        card.style.animationDelay = `${index * 0.05}s`;
+        
+        const editBtnHTML = `<button class="edit-btn" onclick="event.stopPropagation(); openEditModal('${key}')">${data ? '⚙️' : '➕'}</button>`;
+
+        if (!data) {
+            card.innerHTML = `<div style="opacity:0.2; text-align:center; font-size:0.8rem">порожньо</div>${editBtnHTML}`;
+            card.onclick = () => { if(document.body.getAttribute('data-edit-mode') === 'true') openEditModal(key) };
+            return card;
+        }
+
+        const start = timeToMin(data.start), end = timeToMin(data.end);
+        let progressHtml = '';
+        let timerHtml = ''; 
+        
+        if (isToday && currentTime >= start && currentTime < end) {
+            card.classList.add('active');
+            card.id = 'activeCard';
+            card.dataset.start = start;
+            card.dataset.end = end;
+            
+            const percent = ((currentTime - start) / (end - start)) * 100;
+            progressHtml = `<div class="progress-container"><div class="progress-bar" id="activeProgressBar" style="width:${percent}%"></div></div>`;
+            
+            const remaining = end - currentTime;
+            timerHtml = `<div id="cardTimer" class="card-timer-badge">⏳ ${remaining} хв</div>`;
+
+            activeLessonGlobal = { ...data, remaining: remaining, startMin: start, endMin: end, uniqueId: key + '_' + data.start };
+        }
+
+        card.innerHTML = `
+            ${editBtnHTML}
+            <div style="display:flex; align-items:center;">
+                <div class="time-badge">${data.start} — ${data.end}</div>
+                ${timerHtml}
+            </div>
+            <span class="lesson-name">${data.name}</span>
+            ${data.link ? `<a href="${data.link}" target="_blank" class="lesson-link" onclick="event.stopPropagation()">🔗 Приєднатися</a>` : ''}
+            ${progressHtml}
+        `;
+        card.onclick = () => { if(document.body.getAttribute('data-edit-mode') === 'true') openEditModal(key) };
+        return card;
+    }
+
+    function updateWidgetTimerOnly() {
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+        
+        const w = document.getElementById('activeWidget');
+        const cardTimer = document.getElementById('cardTimer');
+        
+        if (activeLessonGlobal) {
+            if (currentTime >= activeLessonGlobal.startMin && currentTime < activeLessonGlobal.endMin) {
+                w.classList.add('visible');
+                document.getElementById('widgetName').textContent = activeLessonGlobal.name;
+                document.getElementById('widgetTimes').textContent = `${activeLessonGlobal.start} - ${activeLessonGlobal.end}`;
+                
+                const remaining = activeLessonGlobal.endMin - currentTime;
+                
+                document.getElementById('widgetCountdown').textContent = `${remaining} хв`;
+                
+                if(cardTimer) cardTimer.textContent = `⏳ ${remaining} хв`;
+
+                const linkBtn = document.getElementById('widgetLink');
+                if(activeLessonGlobal.link) { linkBtn.style.display = 'flex'; linkBtn.href = activeLessonGlobal.link; }
+                else { linkBtn.style.display = 'none'; }
+
+                const progressBar = document.getElementById('activeProgressBar');
+                if(progressBar) {
+                    const percent = ((currentTime - activeLessonGlobal.startMin) / (activeLessonGlobal.endMin - activeLessonGlobal.startMin)) * 100;
+                    progressBar.style.width = `${percent}%`;
+                }
+
+                // --- НАДСИЛАННЯ СПОВІЩЕННЯ ПРО УРОК ---
+                if (notificationsEnabled && Notification.permission === "granted") {
+                    if (lastNotifiedLessonId !== activeLessonGlobal.uniqueId) {
+                        try {
+                            new Notification(`🔔 Урок почався: ${activeLessonGlobal.name}`, {
+                                body: `Час: ${activeLessonGlobal.start}\nКлікни, щоб відкрити розклад`,
+                                icon: "https://cdn-icons-png.flaticon.com/512/2693/2693507.png"
+                            });
+                            lastNotifiedLessonId = activeLessonGlobal.uniqueId;
+                        } catch(e) { console.log("Notification error", e); }
+                    }
+                }
+                // -------------------------------------
+
+            } else {
+                activeLessonGlobal = null;
+                w.classList.remove('visible');
+                render();
+            }
+        } else {
+            w.classList.remove('visible');
+        }
+    }
+
+    function timeToMin(t) { if(!t) return 0; const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+    
+    function getSuggestedTimes(slotIndex) {
+        for(let d = 0; d < 7; d++) {
+            const checkKey = `${currentWeekIndex}-${d}-${slotIndex}`;
+            if (schedule[checkKey] && schedule[checkKey].start) {
+                return { start: schedule[checkKey].start, end: schedule[checkKey].end };
+            }
+        }
+        return { start: '08:30', end: '09:15' };
+    }
+
+    function updateSubjectsList() {
+        const list = document.getElementById('subjectsList');
+        list.innerHTML = '';
+        const subjects = new Set();
+        Object.values(schedule).forEach(item => {
+            if(item.name) subjects.add(item.name);
+        });
+        subjects.forEach(subj => {
+            const opt = document.createElement('option');
+            opt.value = subj;
+            list.appendChild(opt);
+        });
+    }
+
+    function openEditModal(key) {
+        currentEditKey = key; 
+        const data = schedule[key];
+        const slotIndex = parseInt(key.split('-')[2]);
+        
+        const suggested = getSuggestedTimes(slotIndex);
+        updateSubjectsList();
+
+        document.getElementById('nameInp').value = data ? data.name : '';
+        document.getElementById('startInp').value = data ? data.start : suggested.start;
+        document.getElementById('endInp').value = data ? data.end : suggested.end;
+        document.getElementById('linkInp').value = data ? data.link : '';
+        
+        const m = document.getElementById('modal'); m.style.display = 'flex';
+        setTimeout(() => m.classList.add('open'), 10);
+    }
+
+    function closeModal(id) { const m = document.getElementById(id); m.classList.remove('open'); setTimeout(() => m.style.display = 'none', 300); }
+    
+    function saveLesson() {
+        schedule[currentEditKey] = { 
+            name: document.getElementById('nameInp').value, 
+            start: document.getElementById('startInp').value, 
+            end: document.getElementById('endInp').value, 
+            link: document.getElementById('linkInp').value 
+        };
+        localStorage.setItem('gh-schedule', JSON.stringify(schedule)); 
+        render(); 
+        closeModal('modal');
+    }
+    
+    function deleteLesson() { 
+        delete schedule[currentEditKey]; 
+        localStorage.setItem('gh-schedule', JSON.stringify(schedule)); 
+        render(); 
+        closeModal('modal'); 
+    }
+    
+    function toggleEditMode() {
+        const mode = document.body.getAttribute('data-edit-mode') === 'false';
+        document.body.setAttribute('data-edit-mode', mode);
+        document.getElementById('toggleEdit').classList.toggle('active', mode);
+    }
+    
+    function openSettings() { const m = document.getElementById('settingsModal'); m.style.display = 'flex'; setTimeout(() => m.classList.add('open'), 10); }
+    function setAccent(c) { userSettings.accent = c; saveSettings(); }
+    function changeBackground(v) { userSettings.bg = v; saveSettings(); }
+    function saveSettings() { localStorage.setItem('gh-settings', JSON.stringify(userSettings)); applySettings(); }
+    
+    function applySettings() { 
+        document.documentElement.style.setProperty('--accent', userSettings.accent); 
+        let bg = 'radial-gradient(circle at top right, #1e293b, #0f172a)';
+        if(userSettings.bg === 'sunset') bg = 'linear-gradient(135deg, #2c3e50, #000000)';
+        if(userSettings.bg === 'forest') bg = 'linear-gradient(135deg, #134e5e, #1e293b)';
+        if(userSettings.bg === 'black') bg = '#000';
+        document.documentElement.style.setProperty('--bg-image', bg);
+    }
+
+    function autoFillLink() {
+        const val = document.getElementById('nameInp').value.trim();
+        const found = Object.values(schedule).find(i => i.name === val && i.link);
+        if(found) document.getElementById('linkInp').value = found.link;
+    }
+    init();
+</script>
+</body>
+</html>
