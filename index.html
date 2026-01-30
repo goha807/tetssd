@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate Schedule Pro | Test Mode</title>
+    <title>Ultimate Schedule Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
@@ -120,7 +120,6 @@
         .btn-primary { background: var(--accent); color: #000; border: none; }
         .btn-outline.active { background: var(--accent); color: #000; }
         
-        /* Стиль кнопки сповіщень */
         .btn-notify { border-color: rgba(255,255,255,0.2); }
         .btn-notify.active { 
             background: rgba(46, 213, 115, 0.2); 
@@ -132,19 +131,6 @@
             background: rgba(255, 71, 87, 0.2);
             color: #ff4757;
             border-color: #ff4757;
-        }
-        
-        /* КНОПКА ТЕСТУ */
-        .btn-test {
-            background: #e1b12c;
-            color: #000;
-            border: none;
-            animation: bounce 2s infinite;
-        }
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
-            40% {transform: translateY(-5px);}
-            60% {transform: translateY(-3px);}
         }
 
         .schedule-grid {
@@ -253,14 +239,12 @@
         }
         [data-edit-mode="true"] .edit-btn { opacity: 1; }
 
-        /* ВІДЖЕТ ПОТОЧНОГО УРОКУ (Зліва внизу) */
         .current-widget {
             position: fixed; bottom: 30px; left: 30px; width: 340px; z-index: 100;
             padding: 20px; transform: translateX(-150%); transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1.2);
         }
         .current-widget.visible { transform: translateX(0); }
 
-        /* РЕКЛАМНИЙ БАНЕР (Справа внизу) */
         .ad-corner {
             position: fixed;
             bottom: 30px;
@@ -312,7 +296,6 @@
 
     <div class="controls">
         <button class="btn btn-notify" id="notifyBtn" onclick="toggleNotifications()">🔕 Сповіщення</button>
-        <button class="btn btn-test" onclick="forceTestLesson()">🛠 ТЕСТ</button>
         
         <button class="btn" onclick="document.getElementById('fileInput').click()">📤 Відкрити</button>
         <button class="btn" onclick="exportToFile()">📥 Зберегти</button>
@@ -410,10 +393,6 @@
     let activeLessonGlobal = null;
     let currentWeekIndex = 0; 
     let lastNotifiedLessonId = null;
-    
-    // ТЕСТОВИЙ РЕЖИМ
-    let testModeActive = false;
-    let testLessonData = null;
 
     function init() { 
         migrateDataIfNeeded();
@@ -423,11 +402,21 @@
         }
         
         checkPermissionStatus(); 
-        render(); // Перший рендер
+        render(); 
         
-        // --- ЗАПУСК ПОСТІЙНОЇ ПЕРЕВІРКИ ЧАСУ (СЕРЦЕБИТТЯ) ---
-        // Це основна функція, яка "оживляє" розклад
-        setInterval(heartbeat, 1000); 
+        // --- ВИПРАВЛЕННЯ АВТООНОВЛЕННЯ ---
+        // Запуск таймера
+        setInterval(heartbeat, 1000);
+        
+        // Якщо користувач переключився на іншу вкладку, а потім повернувся - миттєво оновити
+        document.addEventListener("visibilitychange", () => {
+             if (document.visibilityState === 'visible') {
+                 heartbeat();
+             }
+        });
+        
+        // Перший запуск
+        heartbeat();
     }
 
     // --- ГОЛОВНИЙ ЦИКЛ ОНОВЛЕННЯ (HEARTBEAT) ---
@@ -436,41 +425,34 @@
         const currentTime = now.getHours() * 60 + now.getMinutes();
         const currentDay = (now.getDay() + 6) % 7; 
         
-        // 1. Шукаємо урок (або справжній, або тестовий)
         let foundLesson = null;
         
-        if (testModeActive && testLessonData) {
-            // Якщо активовано тест - ігноруємо реальний час
-            foundLesson = testLessonData;
-        } else {
-            // Перевіряємо реальні уроки
-            for(let sIdx = 0; sIdx < 8; sIdx++) {
-                const key = `${currentWeekIndex}-${currentDay}-${sIdx}`;
-                const lesson = schedule[key];
+        // Перевіряємо реальні уроки
+        for(let sIdx = 0; sIdx < 8; sIdx++) {
+            const key = `${currentWeekIndex}-${currentDay}-${sIdx}`;
+            const lesson = schedule[key];
+            
+            if(lesson && lesson.start && lesson.end) {
+                const s = timeToMin(lesson.start);
+                const e = timeToMin(lesson.end);
                 
-                if(lesson && lesson.start && lesson.end) {
-                    const s = timeToMin(lesson.start);
-                    const e = timeToMin(lesson.end);
-                    
-                    if (currentTime >= s && currentTime < e) {
-                        foundLesson = lesson;
-                        foundLesson.startMin = s;
-                        foundLesson.endMin = e;
-                        foundLesson.uniqueId = key + '_' + lesson.start;
-                        break; 
-                    }
+                if (currentTime >= s && currentTime < e) {
+                    foundLesson = lesson;
+                    foundLesson.startMin = s;
+                    foundLesson.endMin = e;
+                    foundLesson.uniqueId = key + '_' + lesson.start;
+                    break; 
                 }
             }
         }
 
-        // 2. Логіка перемикання стану
+        // Логіка оновлення UI
         if (foundLesson) {
-            // Якщо це новий урок (або ми щойно зайшли на сайт)
+            // Якщо почався новий урок (або ми щойно відкрили сайт)
             if (!activeLessonGlobal || activeLessonGlobal.uniqueId !== foundLesson.uniqueId) {
                 activeLessonGlobal = foundLesson;
-                render(); // ОНОВЛЮЄМО СІТКУ
+                render(); // Малює сітку і виділяє активний урок
                 
-                // Якщо це не просто оновлення сторінки, а саме початок уроку - сповіщаємо
                 if (notificationsEnabled) {
                     trySendNotification(foundLesson);
                 }
@@ -478,6 +460,9 @@
             
             // Оновлюємо таймер у віджеті
             updateWidgetUI(foundLesson, currentTime);
+            
+            // Оновлюємо таймер на самій картці в сітці (щоб було видно прогрес)
+            updateCardUI(foundLesson, currentTime);
         } else {
             // Якщо уроку немає
             if (activeLessonGlobal) {
@@ -488,63 +473,14 @@
         }
     }
 
-    // --- СИМУЛЯЦІЯ ДЛЯ ТЕСТУ ---
-    function forceTestLesson() {
-        if(!notificationsEnabled) {
-            alert("❗ Спочатку увімкніть сповіщення кнопкою '🔕 Сповіщення'!");
-            return;
-        }
-
-        const now = new Date();
-        const curMin = now.getHours() * 60 + now.getMinutes();
-        
-        // Створюємо фейковий урок, що почався 1 хвилину тому
-        testLessonData = {
-            name: "🛠 ТЕСТОВИЙ УРОК",
-            start: "Зараз",
-            end: "Потім",
-            startMin: curMin - 1,
-            endMin: curMin + 45,
-            uniqueId: "test_id_" + Math.random(),
-            link: "https://google.com"
-        };
-        
-        testModeActive = true;
-        
-        // Миттєвий запуск перевірки
-        heartbeat();
-        
-        // Вимкнути тест через 10 секунд
-        setTimeout(() => {
-            testModeActive = false;
-            testLessonData = null;
-            heartbeat();
-        }, 15000);
-        
-        alert("Запущено симуляцію уроку на 15 секунд. Перевірте віджет зліва знизу!");
-    }
-
     function updateWidgetUI(lesson, currentTime) {
         const w = document.getElementById('activeWidget');
-        const cardTimer = document.getElementById('cardTimer');
-        
         w.classList.add('visible');
         document.getElementById('widgetName').textContent = lesson.name;
         document.getElementById('widgetTimes').textContent = `${lesson.start} - ${lesson.end}`;
         
-        // Якщо тест - рахуємо час відносно тестових даних
-        let remaining;
-        if (testModeActive) {
-            remaining = lesson.endMin - currentTime; 
-            // Якщо час перейшов через північ або тест глючить
-            if(isNaN(remaining)) remaining = 44; 
-        } else {
-            remaining = lesson.endMin - currentTime;
-        }
-
+        const remaining = lesson.endMin - currentTime;
         document.getElementById('widgetCountdown').textContent = `${remaining} хв`;
-        
-        if(cardTimer) cardTimer.textContent = `⏳ ${remaining} хв`;
 
         const linkBtn = document.getElementById('widgetLink');
         if(lesson.link) { linkBtn.style.display = 'flex'; linkBtn.href = lesson.link; }
@@ -552,10 +488,23 @@
 
         const progressBar = document.getElementById('activeProgressBar');
         if(progressBar) {
-            let percent;
-            if(testModeActive) percent = 50; // Статика для тесту
-            else percent = ((currentTime - lesson.startMin) / (lesson.endMin - lesson.startMin)) * 100;
+            const percent = ((currentTime - lesson.startMin) / (lesson.endMin - lesson.startMin)) * 100;
             progressBar.style.width = `${percent}%`;
+        }
+    }
+    
+    // Додаткова функція для оновлення картки в сітці без повного перемальовування
+    function updateCardUI(lesson, currentTime) {
+        const card = document.getElementById('activeCard');
+        if(card) {
+            const bar = card.querySelector('.progress-bar');
+            const timer = document.getElementById('cardTimer');
+            if(bar && timer) {
+                const remaining = lesson.endMin - currentTime;
+                const percent = ((currentTime - lesson.startMin) / (lesson.endMin - lesson.startMin)) * 100;
+                bar.style.width = `${percent}%`;
+                timer.textContent = `⏳ ${remaining} хв`;
+            }
         }
     }
 
@@ -563,14 +512,13 @@
         if (Notification.permission !== "granted") return;
         
         // Запобіжник повторів
-        if (lastNotifiedLessonId === lesson.uniqueId && !testModeActive) return;
+        if (lastNotifiedLessonId === lesson.uniqueId) return;
 
         try {
             const notification = new Notification(`🔔 Урок почався: ${lesson.name}`, {
-                body: `Клікніть, щоб приєднатися!`,
+                body: `Клікніть, щоб приєднатися! (${lesson.start} - ${lesson.end})`,
                 icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>",
-                tag: lesson.uniqueId,
-                requireInteraction: true // Сповіщення не зникне само
+                tag: lesson.uniqueId
             });
             
             notification.onclick = function() {
@@ -579,10 +527,10 @@
                 this.close();
             };
             
-            // Звук (системний)
+            // Звук
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.volume = 0.5;
-            audio.play().catch(e => console.log("Audio play blocked (user didn't interact yet)"));
+            audio.play().catch(e => console.log("Audio play requires user interaction first"));
 
             lastNotifiedLessonId = lesson.uniqueId;
         } catch (e) {
@@ -611,7 +559,6 @@
             alert("Ваш браузер не підтримує сповіщення."); return;
         }
         
-        // Якщо користувач вже заблокував їх раніше
         if (Notification.permission === "denied") {
             alert("⚠️ Сповіщення заблоковані у налаштуваннях браузера.\nНатисніть на замочок 🔒 біля URL та дозвольте сповіщення."); return;
         }
@@ -743,10 +690,8 @@
         const start = timeToMin(data.start), end = timeToMin(data.end);
         let isActive = false;
         
-        // Логіка підсвітки (враховує тест)
-        if (testModeActive) {
-            isActive = false; // Картки не підсвічуємо в тесті, тільки віджет
-        } else if (activeLessonGlobal && activeLessonGlobal.uniqueId === (key + '_' + data.start)) {
+        // Логіка підсвітки
+        if (activeLessonGlobal && activeLessonGlobal.uniqueId === (key + '_' + data.start)) {
             isActive = true;
         }
 
@@ -758,7 +703,7 @@
             card.id = 'activeCard';
             
             const percent = ((currentTime - start) / (end - start)) * 100;
-            progressHtml = `<div class="progress-container"><div class="progress-bar" id="activeProgressBar" style="width:${percent}%"></div></div>`;
+            progressHtml = `<div class="progress-container"><div class="progress-bar" style="width:${percent}%"></div></div>`;
             
             const remaining = end - currentTime;
             timerHtml = `<div id="cardTimer" class="card-timer-badge">⏳ ${remaining} хв</div>`;
