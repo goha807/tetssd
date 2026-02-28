@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Schedule Pro Railway</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body data-edit-mode="false">
+
+<!-- Dynamic Island -->
+<div class="dynamic-island" id="dynamicIsland" onclick="toggleIslandExpand()">
+    <div class="island-content">
+        <div class="island-left">🎵</div>
+        <div class="island-center">
+            <div class="island-title" id="islandTrack">Тиша</div>
+            <div class="island-subtitle" id="islandStatus">Очікування</div>
+        </div>
+        <div class="island-right">
+            <button class="iso-btn" id="isoPlayBtn" onclick="togglePlay(event)">▶</button>
+        </div>
+    </div>
+    <div class="island-expanded">
+        <div class="exp-track-info">
+            <div class="exp-title" id="expTrackName">Назва треку</div>
+            <input type="range" id="expVolSlider" min="0" max="1" step="0.05" oninput="setVolume(this.value)">
+        </div>
+        <div class="exp-controls">
+            <button class="exp-btn" onclick="changeTrack(-1)">⏮</button>
+            <button class="exp-btn big" id="expPlayBtn" onclick="togglePlay(event)">⏸</button>
+            <button class="exp-btn" onclick="changeTrack(1)">⏭</button>
+        </div>
+    </div>
+</div>
+
+<header>
+    <div class="header-top">
+        <h1>📅 SchedulePro</h1>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="openChat()">💬 <span id="chatBadge" style="display:none; color:#2ed573">●</span></button>
+            <button class="btn-icon" onclick="shareSchedule()">🔗</button>
+            <button class="btn-icon" onclick="openSettings()">🎨</button>
+        </div>
+    </div>
+    <div class="week-switcher glass">
+        <button class="week-btn" onclick="changeWeek(-1)">◀</button>
+        <div class="week-label" id="currentWeekLabel">Тиждень А</div>
+        <button class="week-btn" onclick="changeWeek(1)">▶</button>
+    </div>
+</header>
+
+<div class="schedule-grid" id="grid"></div>
+
+<!-- Chat Modal -->
+<div class="modal-backdrop" id="chatModal">
+    <div class="chat-container glass">
+        <div class="chat-header">
+            <h3>Глобальний Чат</h3>
+            <button class="close-btn" onclick="closeModal('chatModal')">✕</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chatUser" placeholder="Ім'я" style="width: 30%;">
+            <input type="text" id="chatInput" placeholder="Повідомлення..." style="width: 50%;">
+            <button class="btn-primary" onclick="sendChat()" style="width: 15%;">➤</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Lesson Modal -->
+<div class="modal-backdrop" id="modal">
+    <div class="modal glass">
+        <h2>Налаштування уроку</h2>
+        <div style="display:grid; gap:15px;">
+            <div>
+                <label style="font-size:0.8rem; opacity:0.6">Предмет</label>
+                <input type="text" id="nameInp" list="subjectsList" placeholder="Наприклад: Математика">
+                <datalist id="subjectsList"></datalist>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div><label style="font-size:0.8rem; opacity:0.6">Початок</label><input type="time" id="startInp"></div>
+                <div><label style="font-size:0.8rem; opacity:0.6">Кінець</label><input type="time" id="endInp"></div>
+            </div>
+            <div><label style="font-size:0.8rem; opacity:0.6">Посилання</label><input type="text" id="linkInp" placeholder="Zoom/Meet link"></div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:25px;">
+            <button class="btn btn-primary" style="flex:2" onclick="saveLesson()">Зберегти</button>
+            <button class="btn" style="flex:1; background:var(--danger)" onclick="deleteLesson()">🗑️</button>
+            <button class="btn" style="flex:1" onclick="closeModal('modal')">Скасувати</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-backdrop" id="settingsModal">
+    <div class="modal glass">
+        <h2>Стилізація</h2>
+        <div style="display:grid; gap:20px;">
+            <div>
+                <label>Колір теми</label>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <div style="width:35px; height:35px; border-radius:10px; background:#38bdf8; cursor:pointer;" onclick="setAccent('#38bdf8')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#2ed573; cursor:pointer;" onclick="setAccent('#2ed573')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#ffa502; cursor:pointer;" onclick="setAccent('#ffa502')"></div>
+                    <div style="width:35px; height:35px; border-radius:10px; background:#ff4757; cursor:pointer;" onclick="setAccent('#ff4757')"></div>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:30px;" onclick="closeModal('settingsModal')">Готово</button>
+    </div>
+</div>
+
+<div class="controls-fixed">
+    <button class="btn btn-notify" id="notifyBtn" onclick="toggleNotifications()">🔕</button>
+    <button class="btn btn-outline" id="toggleEdit" onclick="toggleEditMode()">✏️ Ред.</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
